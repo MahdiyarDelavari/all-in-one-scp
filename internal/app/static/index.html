@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>All-in-One SCP</title>
+    <link rel="icon" href="/app-icon.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <img class="hero__icon" src="/app-icon.png" alt="App icon" />
+        <div>
+          <p class="eyebrow">Cross-platform Go app</p>
+          <h1>All-in-One SCP</h1>
+          <p class="hero__text">
+            A single app for SSH login, remote downloads, and exclude rules like
+            <code>node_modules</code> or <code>*.log</code>. Works through a local browser UI, so the same app can run on Windows, Linux, and macOS.
+          </p>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="card">
+          <h2>Connection</h2>
+          <div class="field-grid">
+            <label>
+              <span>Host</span>
+              <input id="host" placeholder="203.0.113.10 or my-server.com" />
+            </label>
+            <label>
+              <span>Port</span>
+              <input id="port" type="number" value="22" />
+            </label>
+            <label>
+              <span>Username</span>
+              <input id="user" placeholder="root" />
+            </label>
+            <label class="checkbox">
+              <input id="insecure" type="checkbox" />
+              <span>Skip host key checking</span>
+            </label>
+          </div>
+
+          <label>
+            <span>Authentication</span>
+            <select id="authMode">
+              <option value="key">Private key</option>
+              <option value="password">Password</option>
+              <option value="passwordEnv">Password from env variable</option>
+            </select>
+          </label>
+
+          <div id="auth-key" class="auth-panel">
+            <label>
+              <span>Private key path</span>
+              <input id="keyPath" placeholder="~/.ssh/id_ed25519 or C:\Users\mahdi\.ssh\id_ed25519" />
+            </label>
+          </div>
+
+          <div id="auth-password" class="auth-panel hidden">
+            <label>
+              <span>Password</span>
+              <input id="password" type="password" placeholder="Password used for test/download" />
+            </label>
+          </div>
+
+          <div id="auth-passwordEnv" class="auth-panel hidden">
+            <label>
+              <span>Environment variable name</span>
+              <input id="passwordEnv" value="SSH_PASSWORD" />
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Transfer</h2>
+          <label>
+            <span>Remote file/folder path</span>
+            <input id="remotePath" value="/root/meow" />
+            <small>Examples: <code>/root/meow</code>, <code>/var/www/myapp</code>, <code>/home/ubuntu/project</code></small>
+          </label>
+
+          <label>
+            <span>Local destination folder</span>
+            <input id="localPath" value="./backup" />
+            <small>Examples: <code>./backup</code>, <code>~/Downloads/backup</code>, <code>C:\Users\mahdi\Downloads\backup</code></small>
+          </label>
+
+          <label>
+            <span>Exclude patterns</span>
+            <input id="excludes" value="node_modules,.git,*.log" />
+            <small>Comma-separated patterns like <code>node_modules,.git,*.log</code></small>
+          </label>
+
+          <div class="actions">
+            <button id="testBtn">Test Connection</button>
+            <button id="sshBtn">Open SSH Terminal</button>
+            <button id="downloadBtn">Download Remote Path</button>
+          </div>
+
+          <p id="status" class="status">Ready.</p>
+        </section>
+
+        <section class="card card--wide">
+          <div class="log-header">
+            <h2>Activity Log</h2>
+            <button id="clearLogBtn" class="ghost">Clear Log</button>
+          </div>
+          <pre id="log"></pre>
+        </section>
+
+        <section class="card card--wide">
+          <div class="footer-actions">
+            <div>
+              <h2>Quit</h2>
+              <p>Use this when you want to stop the local UI server cleanly.</p>
+            </div>
+            <button id="quitBtn" class="danger">Quit App</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
