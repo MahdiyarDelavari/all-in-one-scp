@@ -13,6 +13,7 @@ const fields = [
 
 const logBox = document.getElementById("log");
 const statusLine = document.getElementById("status");
+const toastContainer = document.getElementById("toastContainer");
 const authMode = document.getElementById("authMode");
 const testBtn = document.getElementById("testBtn");
 const sshBtn = document.getElementById("sshBtn");
@@ -60,7 +61,8 @@ function buildPayload() {
 }
 
 async function runAction(url, busyText) {
-  setBusy(true, busyText);
+  setBusy(true);
+  statusLine.textContent = busyText;
 
   try {
     const response = await fetch(url, {
@@ -73,23 +75,52 @@ async function runAction(url, busyText) {
 
     const result = await response.json();
     if (!result.ok) {
-      statusLine.textContent = "Error: " + result.error;
+      const message = "Error: " + result.error;
+      statusLine.textContent = message;
+      showToast(message, "error");
       return;
     }
 
     statusLine.textContent = result.message || "Done.";
+    showToast(result.message || "Done.", "success");
   } catch (error) {
-    statusLine.textContent = "Error: " + error.message;
+    const message = "Error: " + error.message;
+    statusLine.textContent = message;
+    showToast(message, "error");
   } finally {
-    setBusy(false, "Ready.");
+    setBusy(false);
   }
 }
 
-function setBusy(busy, text) {
-  statusLine.textContent = text;
+function setBusy(busy) {
   testBtn.disabled = busy;
   sshBtn.disabled = busy;
   downloadBtn.disabled = busy;
+}
+
+function showToast(message, type) {
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${type}`;
+  toast.textContent = message;
+
+  toastContainer.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.classList.add("toast--visible");
+  });
+
+  const hideToast = () => {
+    toast.classList.remove("toast--visible");
+    toast.addEventListener(
+      "transitionend",
+      () => {
+        toast.remove();
+      },
+      { once: true },
+    );
+  };
+
+  setTimeout(hideToast, 4000);
 }
 
 function connectLogs() {
@@ -101,6 +132,7 @@ function connectLogs() {
 
   stream.onerror = () => {
     statusLine.textContent = "Log stream disconnected.";
+    showToast("Log stream disconnected.", "error");
   };
 }
 

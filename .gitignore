@@ -1,5 +1,7 @@
 bin/
 dist/
 *.exe
+*.exe~
 *.log
 allinonescp
+backup/
