@@ -64,28 +64,47 @@ body {
 }
 
 .shell {
-  max-width: 1120px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 28px 20px 36px;
+  padding: 24px 20px 36px;
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 18px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  padding: 24px;
-  border-radius: 24px;
+  padding: 18px 22px;
+  border-radius: 22px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(220, 240, 239, 0.92));
   border: 1px solid var(--panel-border);
   box-shadow: var(--shadow);
 }
 
+.hero__brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .hero__icon {
-  width: 92px;
-  height: 92px;
-  border-radius: 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+}
+
+.hero__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.hero__button {
+  min-width: 140px;
+}
+
+.hero__button--secondary {
+  background: #eaf5f4;
+  color: var(--text);
 }
 
 .eyebrow {
@@ -103,10 +122,8 @@ p {
   margin-top: 0;
 }
 
-.hero__text {
+h1 {
   margin-bottom: 0;
-  color: var(--muted);
-  line-height: 1.6;
 }
 
 .grid {
@@ -116,7 +133,7 @@ p {
 }
 
 .card {
-  padding: 22px;
+  padding: 20px;
   border-radius: 22px;
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -125,6 +142,30 @@ p {
 
 .card--wide {
   grid-column: 1 / -1;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.card__header h2 {
+  margin-bottom: 0;
+}
+
+.card__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0;
+  border-radius: 999px;
+  background: rgba(14, 154, 167, 0.12);
+  color: var(--accent-dark);
+  font-weight: 700;
 }
 
 .field-grid {
@@ -141,7 +182,7 @@ label,
 
 label span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   font-weight: 600;
 }
 
@@ -154,7 +195,7 @@ button {
 input,
 select {
   width: 100%;
-  padding: 12px 14px;
+  padding: 13px 14px;
   border-radius: 14px;
   border: 1px solid rgba(19, 56, 61, 0.16);
   background: #fff;
@@ -165,12 +206,6 @@ input:focus,
 select:focus {
   outline: 2px solid rgba(14, 154, 167, 0.2);
   border-color: var(--accent);
-}
-
-small {
-  display: block;
-  margin-top: 6px;
-  color: var(--muted);
 }
 
 .checkbox {
@@ -188,6 +223,33 @@ small {
   margin: 0;
 }
 
+.auth {
+  margin-bottom: 16px;
+}
+
+.auth__label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.auth__choices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth__choice {
+  padding: 10px 14px;
+  background: #edf4f4;
+  color: var(--text);
+}
+
+.auth__choice--active {
+  background: var(--accent);
+  color: white;
+}
+
 .actions,
 .footer-actions,
 .log-header {
@@ -201,6 +263,11 @@ small {
   margin-top: 18px;
   justify-content: flex-start;
   flex-wrap: wrap;
+}
+
+.actions--stack {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 button {
@@ -217,6 +284,12 @@ button:hover {
   background: var(--accent-dark);
 }
 
+.hero__button--secondary:hover,
+.auth__choice:hover,
+.action-button--quiet:hover {
+  background: #d8ecea;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: wait;
@@ -231,10 +304,26 @@ button:disabled {
   background: var(--danger);
 }
 
+.action-button {
+  width: 100%;
+  padding: 14px 18px;
+}
+
+.action-button--primary {
+  padding: 16px 18px;
+  font-size: 16px;
+}
+
+.action-button--quiet {
+  background: #edf4f4;
+  color: var(--text);
+}
+
 .status {
   margin: 18px 0 0;
   color: var(--muted);
   min-height: 24px;
+  font-weight: 600;
 }
 
 #log {
@@ -274,7 +363,9 @@ code {
   }
 
   .hero {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
   }
 
   .grid,
@@ -282,10 +373,17 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .hero__brand,
   .actions,
   .footer-actions,
   .log-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .hero__actions,
+  .auth__choices {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

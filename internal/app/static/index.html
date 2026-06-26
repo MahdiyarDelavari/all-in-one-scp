@@ -12,20 +12,25 @@
 
     <div class="shell">
       <header class="hero">
-        <img class="hero__icon" src="/app-icon.png" alt="App icon" />
-        <div>
-          <p class="eyebrow">Cross-platform Go app</p>
-          <h1>All-in-One SCP</h1>
-          <p class="hero__text">
-            A single app for SSH login, remote downloads, and exclude rules like
-            <code>node_modules</code> or <code>*.log</code>. Works through a local browser UI, so the same app can run on Windows, Linux, and macOS.
-          </p>
+        <div class="hero__brand">
+          <img class="hero__icon" src="/app-icon.png" alt="App icon" />
+          <div>
+            <p class="eyebrow">Cross-platform Go app</p>
+            <h1>All-in-One SCP</h1>
+          </div>
+        </div>
+        <div class="hero__actions">
+          <button id="heroSshBtn" class="hero__button">Open SSH</button>
+          <button id="heroDownloadBtn" class="hero__button hero__button--secondary">Download</button>
         </div>
       </header>
 
       <main class="grid">
         <section class="card">
-          <h2>Connection</h2>
+          <div class="card__header">
+            <p class="card__step">1</p>
+            <h2>Server</h2>
+          </div>
           <div class="field-grid">
             <label>
               <span>Host</span>
@@ -45,14 +50,19 @@
             </label>
           </div>
 
-          <label>
-            <span>Authentication</span>
-            <select id="authMode">
+          <div class="auth">
+            <span class="auth__label">Authentication</span>
+            <div class="auth__choices">
+              <button type="button" id="authKeyBtn" class="auth__choice auth__choice--active" data-auth-mode="key">Key</button>
+              <button type="button" id="authPasswordBtn" class="auth__choice" data-auth-mode="password">Password</button>
+              <button type="button" id="authEnvBtn" class="auth__choice" data-auth-mode="passwordEnv">Env</button>
+            </div>
+            <select id="authMode" class="hidden">
               <option value="key">Private key</option>
               <option value="password">Password</option>
               <option value="passwordEnv">Password from env variable</option>
             </select>
-          </label>
+          </div>
 
           <div id="auth-key" class="auth-panel">
             <label>
@@ -64,7 +74,7 @@
           <div id="auth-password" class="auth-panel hidden">
             <label>
               <span>Password</span>
-              <input id="password" type="password" placeholder="Password used for test/download" />
+              <input id="password" type="password" placeholder="Password" />
             </label>
           </div>
 
@@ -77,29 +87,29 @@
         </section>
 
         <section class="card">
-          <h2>Transfer</h2>
+          <div class="card__header">
+            <p class="card__step">2</p>
+            <h2>Transfer</h2>
+          </div>
           <label>
             <span>Remote file/folder path</span>
             <input id="remotePath" value="/root/meow" />
-            <small>Examples: <code>/root/meow</code>, <code>/var/www/myapp</code>, <code>/home/ubuntu/project</code></small>
           </label>
 
           <label>
             <span>Local destination folder</span>
             <input id="localPath" value="./backup" />
-            <small>Examples: <code>./backup</code>, <code>~/Downloads/backup</code>, <code>C:\Users\mahdi\Downloads\backup</code></small>
           </label>
 
           <label>
             <span>Exclude patterns</span>
             <input id="excludes" value="node_modules,.git,*.log" />
-            <small>Comma-separated patterns like <code>node_modules,.git,*.log</code></small>
           </label>
 
-          <div class="actions">
-            <button id="testBtn">Test Connection</button>
-            <button id="sshBtn">Open SSH Terminal</button>
-            <button id="downloadBtn">Download Remote Path</button>
+          <div class="actions actions--stack">
+            <button id="sshBtn" class="action-button action-button--primary">Open SSH</button>
+            <button id="downloadBtn" class="action-button">Download</button>
+            <button id="testBtn" class="action-button action-button--quiet">Test Connection</button>
           </div>
 
           <p id="status" class="status">Ready.</p>
@@ -117,7 +127,6 @@
           <div class="footer-actions">
             <div>
               <h2>Quit</h2>
-              <p>Use this when you want to stop the local UI server cleanly.</p>
             </div>
             <button id="quitBtn" class="danger">Quit App</button>
           </div>

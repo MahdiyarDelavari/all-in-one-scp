@@ -15,15 +15,19 @@ const logBox = document.getElementById("log");
 const statusLine = document.getElementById("status");
 const toastContainer = document.getElementById("toastContainer");
 const authMode = document.getElementById("authMode");
+const authButtons = document.querySelectorAll("[data-auth-mode]");
 const testBtn = document.getElementById("testBtn");
 const sshBtn = document.getElementById("sshBtn");
 const downloadBtn = document.getElementById("downloadBtn");
+const heroSshBtn = document.getElementById("heroSshBtn");
+const heroDownloadBtn = document.getElementById("heroDownloadBtn");
 
 restoreForm();
 updateAuthPanels();
 connectLogs();
 wirePersistence();
 
+authMode.addEventListener("change", syncAuthButtons);
 authMode.addEventListener("change", updateAuthPanels);
 document.getElementById("clearLogBtn").addEventListener("click", () => {
   logBox.textContent = "";
@@ -32,15 +36,31 @@ document.getElementById("clearLogBtn").addEventListener("click", () => {
 testBtn.addEventListener("click", () => runAction("/api/test", "Testing connection..."));
 sshBtn.addEventListener("click", () => runAction("/api/open-ssh", "Opening SSH terminal..."));
 downloadBtn.addEventListener("click", () => runAction("/api/download", "Downloading..."));
+heroSshBtn.addEventListener("click", () => runAction("/api/open-ssh", "Opening SSH terminal..."));
+heroDownloadBtn.addEventListener("click", () => runAction("/api/download", "Downloading..."));
 document.getElementById("quitBtn").addEventListener("click", async () => {
   await fetch("/api/quit", { method: "POST" });
   statusLine.textContent = "App is shutting down.";
 });
+for (const button of authButtons) {
+  button.addEventListener("click", () => {
+    authMode.value = button.dataset.authMode;
+    syncAuthButtons();
+    updateAuthPanels();
+    saveForm();
+  });
+}
 
 function updateAuthPanels() {
   document.getElementById("auth-key").classList.toggle("hidden", authMode.value !== "key");
   document.getElementById("auth-password").classList.toggle("hidden", authMode.value !== "password");
   document.getElementById("auth-passwordEnv").classList.toggle("hidden", authMode.value !== "passwordEnv");
+}
+
+function syncAuthButtons() {
+  for (const button of authButtons) {
+    button.classList.toggle("auth__choice--active", button.dataset.authMode === authMode.value);
+  }
 }
 
 function buildPayload() {
@@ -96,6 +116,8 @@ function setBusy(busy) {
   testBtn.disabled = busy;
   sshBtn.disabled = busy;
   downloadBtn.disabled = busy;
+  heroSshBtn.disabled = busy;
+  heroDownloadBtn.disabled = busy;
 }
 
 function showToast(message, type) {
@@ -176,4 +198,6 @@ function restoreForm() {
   } catch (_error) {
     localStorage.removeItem("all-in-one-scp-form");
   }
+
+  syncAuthButtons();
 }
