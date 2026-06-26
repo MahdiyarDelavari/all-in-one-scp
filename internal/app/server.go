@@ -16,9 +16,11 @@ import (
 var staticFiles embed.FS
 
 type Server struct {
-	logs *logHub
-	quit chan struct{}
-	once sync.Once
+	logs     *logHub
+	sshLogs  *logHub
+	sshShell *transfer.BrowserShell
+	quit     chan struct{}
+	once     sync.Once
 }
 
 type requestPayload struct {
@@ -40,10 +42,16 @@ type apiResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
+type sshInputPayload struct {
+	Input string `json:"input"`
+}
+
 func New() *Server {
 	return &Server{
-		logs: newLogHub(),
-		quit: make(chan struct{}),
+		logs:     newLogHub(),
+		sshLogs:  newLogHub(),
+		sshShell: transfer.NewBrowserShell(),
+		quit:     make(chan struct{}),
 	}
 }
 
@@ -58,7 +66,10 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/", http.FileServer(http.FS(frontend)))
 	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/test", s.handleTestConnection)
-	mux.HandleFunc("/api/open-ssh", s.handleOpenSSH)
+	mux.HandleFunc("/api/ssh/events", s.handleSSHEvents)
+	mux.HandleFunc("/api/ssh/connect", s.handleSSHConnect)
+	mux.HandleFunc("/api/ssh/input", s.handleSSHInput)
+	mux.HandleFunc("/api/ssh/disconnect", s.handleSSHDisconnect)
 	mux.HandleFunc("/api/download", s.handleDownload)
 	mux.HandleFunc("/api/quit", s.handleQuit)
 
@@ -74,6 +85,14 @@ func (s *Server) Log(line string) {
 }
 
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	s.handleStream(w, r, s.logs, "Connected to activity log.")
+}
+
+func (s *Server) handleSSHEvents(w http.ResponseWriter, r *http.Request) {
+	s.handleStream(w, r, s.sshLogs, "Connected to SSH output.")
+}
+
+func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, hub *logHub, firstMessage string) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -84,10 +103,10 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, unsubscribe := s.logs.subscribe()
+	client, unsubscribe := hub.subscribe()
 	defer unsubscribe()
 
-	fmt.Fprintf(w, "data: %s\n\n", escapeSSE("Connected to activity log."))
+	fmt.Fprintf(w, "data: %s\n\n", escapeSSE(firstMessage))
 	flusher.Flush()
 
 	for {
@@ -128,7 +147,7 @@ func (s *Server) handleTestConnection(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Connection succeeded."})
 }
 
-func (s *Server) handleOpenSSH(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleSSHConnect(w http.ResponseWriter, r *http.Request) {
 	payload, ok := s.decodePayload(w, r)
 	if !ok {
 		return
@@ -140,15 +159,60 @@ func (s *Server) handleOpenSSH(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Log("Opening SSH window for " + config.Address())
-	if err := transfer.OpenInteractiveShell(config); err != nil {
-		s.Log("Could not open SSH window: " + err.Error())
+	s.Log("Starting in-page SSH session for " + config.Address())
+	s.sshLogs.broadcast("")
+	if err := s.sshShell.Start(config, func(chunk string) {
+		s.sshLogs.broadcast(chunk)
+	}); err != nil {
+		s.Log("Could not start SSH session: " + err.Error())
 		s.writeOperationError(w, err)
 		return
 	}
 
-	s.Log("SSH terminal launched.")
-	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "SSH terminal launched."})
+	s.sshLogs.broadcast("[Connected to " + config.Address() + "]\n")
+	s.Log("SSH session connected.")
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "SSH connected."})
+}
+
+func (s *Server) handleSSHInput(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload sshInputPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(payload.Input) == "" {
+		s.writeOperationError(w, fmt.Errorf("command cannot be empty"))
+		return
+	}
+
+	if err := s.sshShell.SendLine(payload.Input); err != nil {
+		s.writeOperationError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Command sent."})
+}
+
+func (s *Server) handleSSHDisconnect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := s.sshShell.Close(); err != nil {
+		s.writeOperationError(w, err)
+		return
+	}
+
+	s.sshLogs.broadcast("\n[SSH session disconnected]\n")
+	s.Log("SSH session disconnected.")
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "SSH disconnected."})
 }
 
 func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {

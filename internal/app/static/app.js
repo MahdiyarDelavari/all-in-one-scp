@@ -21,11 +21,20 @@ const sshBtn = document.getElementById("sshBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 const heroSshBtn = document.getElementById("heroSshBtn");
 const heroDownloadBtn = document.getElementById("heroDownloadBtn");
+const terminalOutput = document.getElementById("terminalOutput");
+const terminalForm = document.getElementById("terminalForm");
+const terminalInput = document.getElementById("terminalInput");
+const terminalSendBtn = document.getElementById("terminalSendBtn");
+const sshDisconnectBtn = document.getElementById("sshDisconnectBtn");
+
+let sshConnected = false;
 
 restoreForm();
 updateAuthPanels();
 connectLogs();
+connectSSHLogs();
 wirePersistence();
+updateSSHUI();
 
 authMode.addEventListener("change", syncAuthButtons);
 authMode.addEventListener("change", updateAuthPanels);
@@ -34,14 +43,16 @@ document.getElementById("clearLogBtn").addEventListener("click", () => {
 });
 
 testBtn.addEventListener("click", () => runAction("/api/test", "Testing connection..."));
-sshBtn.addEventListener("click", () => runAction("/api/open-ssh", "Opening SSH terminal..."));
+sshBtn.addEventListener("click", connectSSH);
 downloadBtn.addEventListener("click", () => runAction("/api/download", "Downloading..."));
-heroSshBtn.addEventListener("click", () => runAction("/api/open-ssh", "Opening SSH terminal..."));
+heroSshBtn.addEventListener("click", connectSSH);
 heroDownloadBtn.addEventListener("click", () => runAction("/api/download", "Downloading..."));
 document.getElementById("quitBtn").addEventListener("click", async () => {
   await fetch("/api/quit", { method: "POST" });
   statusLine.textContent = "App is shutting down.";
 });
+terminalForm.addEventListener("submit", sendSSHCommand);
+sshDisconnectBtn.addEventListener("click", disconnectSSH);
 for (const button of authButtons) {
   button.addEventListener("click", () => {
     authMode.value = button.dataset.authMode;
@@ -78,6 +89,111 @@ function buildPayload() {
     localPath: document.getElementById("localPath").value.trim(),
     excludes: document.getElementById("excludes").value.trim(),
   };
+}
+
+async function connectSSH() {
+  setBusy(true);
+  statusLine.textContent = "Connecting SSH...";
+  terminalOutput.textContent = "";
+
+  try {
+    const response = await fetch("/api/ssh/connect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildPayload()),
+    });
+
+    const result = await response.json();
+    if (!result.ok) {
+      const message = "Error: " + result.error;
+      statusLine.textContent = message;
+      showToast(message, "error");
+      return;
+    }
+
+    sshConnected = true;
+    updateSSHUI();
+    terminalInput.focus();
+    statusLine.textContent = result.message || "SSH connected.";
+    showToast(result.message || "SSH connected.", "success");
+  } catch (error) {
+    const message = "Error: " + error.message;
+    statusLine.textContent = message;
+    showToast(message, "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function sendSSHCommand(event) {
+  event.preventDefault();
+
+  if (!sshConnected) {
+    showToast("Error: connect SSH first.", "error");
+    return;
+  }
+
+  const input = terminalInput.value.trim();
+  if (!input) {
+    return;
+  }
+
+  terminalSendBtn.disabled = true;
+
+  try {
+    const response = await fetch("/api/ssh/input", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ input }),
+    });
+
+    const result = await response.json();
+    if (!result.ok) {
+      const message = "Error: " + result.error;
+      statusLine.textContent = message;
+      showToast(message, "error");
+      return;
+    }
+
+    terminalInput.value = "";
+    statusLine.textContent = "Command sent.";
+  } catch (error) {
+    const message = "Error: " + error.message;
+    statusLine.textContent = message;
+    showToast(message, "error");
+  } finally {
+    terminalSendBtn.disabled = false;
+    terminalInput.focus();
+  }
+}
+
+async function disconnectSSH() {
+  try {
+    const response = await fetch("/api/ssh/disconnect", {
+      method: "POST",
+    });
+
+    const result = await response.json();
+    if (!result.ok) {
+      const message = "Error: " + result.error;
+      statusLine.textContent = message;
+      showToast(message, "error");
+      return;
+    }
+
+    sshConnected = false;
+    updateSSHUI();
+    statusLine.textContent = result.message || "SSH disconnected.";
+    showToast(result.message || "SSH disconnected.", "success");
+  } catch (error) {
+    const message = "Error: " + error.message;
+    statusLine.textContent = message;
+    showToast(message, "error");
+  }
 }
 
 async function runAction(url, busyText) {
@@ -120,6 +236,14 @@ function setBusy(busy) {
   heroDownloadBtn.disabled = busy;
 }
 
+function updateSSHUI() {
+  sshBtn.textContent = sshConnected ? "Reconnect SSH" : "Connect SSH";
+  heroSshBtn.textContent = sshConnected ? "Reconnect SSH" : "Connect SSH";
+  terminalInput.disabled = !sshConnected;
+  terminalSendBtn.disabled = !sshConnected;
+  sshDisconnectBtn.disabled = !sshConnected;
+}
+
 function showToast(message, type) {
   const toast = document.createElement("div");
   toast.className = `toast toast--${type}`;
@@ -155,6 +279,23 @@ function connectLogs() {
   stream.onerror = () => {
     statusLine.textContent = "Log stream disconnected.";
     showToast("Log stream disconnected.", "error");
+  };
+}
+
+function connectSSHLogs() {
+  const stream = new EventSource("/api/ssh/events");
+  stream.onmessage = (event) => {
+    terminalOutput.textContent += event.data;
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+    if (event.data.includes("[SSH session closed")) {
+      sshConnected = false;
+      updateSSHUI();
+    }
+  };
+
+  stream.onerror = () => {
+    showToast("Error: SSH stream disconnected.", "error");
   };
 }
 

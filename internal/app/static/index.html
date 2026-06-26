@@ -20,7 +20,7 @@
           </div>
         </div>
         <div class="hero__actions">
-          <button id="heroSshBtn" class="hero__button">Open SSH</button>
+          <button id="heroSshBtn" class="hero__button">Connect SSH</button>
           <button id="heroDownloadBtn" class="hero__button hero__button--secondary">Download</button>
         </div>
       </header>
@@ -107,12 +107,24 @@
           </label>
 
           <div class="actions actions--stack">
-            <button id="sshBtn" class="action-button action-button--primary">Open SSH</button>
+            <button id="sshBtn" class="action-button action-button--primary">Connect SSH</button>
             <button id="downloadBtn" class="action-button">Download</button>
             <button id="testBtn" class="action-button action-button--quiet">Test Connection</button>
           </div>
 
           <p id="status" class="status">Ready.</p>
+        </section>
+
+        <section class="card card--wide">
+          <div class="log-header">
+            <h2>SSH Console</h2>
+            <button id="sshDisconnectBtn" class="ghost">Disconnect</button>
+          </div>
+          <pre id="terminalOutput" class="terminal-output"></pre>
+          <form id="terminalForm" class="terminal-form">
+            <input id="terminalInput" class="terminal-input" autocomplete="off" placeholder="Type a command" />
+            <button id="terminalSendBtn" type="submit" class="terminal-send">Send</button>
+          </form>
         </section>
 
         <section class="card card--wide">

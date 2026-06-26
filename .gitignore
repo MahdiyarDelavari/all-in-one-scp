@@ -3,6 +3,7 @@ dist/
 *.exe
 *.exe~
 *.log
+ssh-*.txt
 allinonescp
 backup/
 backup2/
