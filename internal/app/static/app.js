@@ -149,6 +149,7 @@ clearHistoryBtn.addEventListener("click", () => {
   transferHistory = [];
   persistHistory();
   renderHistory();
+  setStatus("Recent transfers cleared.", "neutral");
   showToast("Recent transfers cleared.", "success");
 });
 
@@ -386,6 +387,7 @@ function saveProfile(scope) {
   renderProfiles();
 
   const passwordNote = connection.authMode === "password" ? " Password is not saved." : "";
+  setStatus(`Saved profile ${nextProfile.name}.`, "success");
   showToast(`Saved profile ${nextProfile.name}.${passwordNote}`, "success");
 }
 
@@ -393,6 +395,7 @@ function deleteProfile(profileId) {
   profiles = profiles.filter((profile) => profile.id !== profileId);
   persistProfiles();
   renderProfiles();
+  setStatus("Profile removed.", "neutral");
   showToast("Profile removed.", "success");
 }
 
@@ -404,6 +407,7 @@ function loadProfile(scope, profileId) {
 
   applyConnectionState(scope, profile.connection);
   saveForm();
+  setStatus(`Loaded ${profile.name}.`, "neutral");
   showToast(`Loaded ${profile.name} into ${scope === "source" ? "Server 1" : "Server 2"}.`, "success");
 }
 
@@ -455,6 +459,7 @@ function rememberTransfer(entry) {
 
 function renderHistory() {
   recentTransfers.textContent = "";
+  clearHistoryBtn.disabled = transferHistory.length === 0;
 
   if (transferHistory.length === 0) {
     const empty = document.createElement("div");
@@ -485,6 +490,7 @@ function renderHistory() {
     loadBtn.textContent = "Load";
     loadBtn.addEventListener("click", () => {
       applyTransferSnapshot(entry);
+      setStatus("Transfer loaded.", "neutral");
       showToast("Transfer loaded.", "success");
     });
 
@@ -508,6 +514,7 @@ function rerunHistoryEntry(entry) {
   applyTransferSnapshot(entry);
 
   if (requiresManualPassword(entry)) {
+    setStatus("Password is required before rerun.", "error");
     showToast("Error: password is not saved. Enter it, then run again.", "error");
     return;
   }
