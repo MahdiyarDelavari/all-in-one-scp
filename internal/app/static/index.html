@@ -10,31 +10,44 @@
   <body>
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <div class="shell">
-      <header class="hero">
-        <div class="hero__brand">
-          <img class="hero__icon" src="/app-icon.png" alt="App icon" />
-          <div>
-            <p class="eyebrow">Cross-platform Go app</p>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand__icon" src="/app-icon.png" alt="App icon" />
+          <div class="brand__copy">
             <h1>All-in-One SCP</h1>
+            <p>SSH, download, and server-to-server copy</p>
           </div>
         </div>
-        <div class="hero__actions">
-          <button id="heroSshBtn" class="hero__button">Connect SSH</button>
-          <button id="heroDownloadBtn" class="hero__button hero__button--secondary">Download</button>
+
+        <div class="topbar__actions">
+          <button id="heroSshBtn" class="shortcut-btn">SSH Console</button>
+          <button id="heroDownloadBtn" class="shortcut-btn shortcut-btn--secondary">Download</button>
+          <button id="heroRemoteCopyBtn" class="shortcut-btn shortcut-btn--secondary">Server to Server</button>
         </div>
       </header>
 
-      <main class="grid">
-        <section class="card">
-          <div class="card__header">
-            <p class="card__step">1</p>
-            <h2>Server</h2>
+      <section class="status-strip">
+        <div id="status" class="status-banner status-banner--neutral">Ready.</div>
+        <button id="quitBtn" class="danger-btn">Quit App</button>
+      </section>
+
+      <main class="workspace">
+        <section class="panel panel--source">
+          <div class="panel__header">
+            <div>
+              <p class="panel__kicker">Source</p>
+              <h2>Server 1</h2>
+            </div>
+            <button id="sourceProfileSaveBtn" class="panel__utility">Save Profile</button>
           </div>
-          <div class="field-grid">
+
+          <div id="sourceProfiles" class="profile-strip"></div>
+
+          <div class="panel__grid">
             <label>
               <span>Host</span>
-              <input id="host" placeholder="203.0.113.10 or my-server.com" />
+              <input id="host" placeholder="203.0.113.10" />
             </label>
             <label>
               <span>Port</span>
@@ -44,18 +57,18 @@
               <span>Username</span>
               <input id="user" placeholder="root" />
             </label>
-            <label class="checkbox">
+            <label class="toggle">
               <input id="insecure" type="checkbox" />
-              <span>Skip host key checking</span>
+              <span>Skip host key check</span>
             </label>
           </div>
 
-          <div class="auth">
-            <span class="auth__label">Authentication</span>
-            <div class="auth__choices">
-              <button type="button" id="authKeyBtn" class="auth__choice auth__choice--active" data-auth-mode="key">Key</button>
-              <button type="button" id="authPasswordBtn" class="auth__choice" data-auth-mode="password">Password</button>
-              <button type="button" id="authEnvBtn" class="auth__choice" data-auth-mode="passwordEnv">Env</button>
+          <div class="mode-row">
+            <div class="mode-row__label">Authentication</div>
+            <div class="mode-pillbox">
+              <button type="button" id="authKeyBtn" class="mode-pill mode-pill--active" data-auth-scope="source" data-auth-mode="key">Key</button>
+              <button type="button" id="authPasswordBtn" class="mode-pill" data-auth-scope="source" data-auth-mode="password">Password</button>
+              <button type="button" id="authEnvBtn" class="mode-pill" data-auth-scope="source" data-auth-mode="passwordEnv">Env</button>
             </div>
             <select id="authMode" class="hidden">
               <option value="key">Private key</option>
@@ -67,7 +80,7 @@
           <div id="auth-key" class="auth-panel">
             <label>
               <span>Private key path</span>
-              <input id="keyPath" placeholder="~/.ssh/id_ed25519 or C:\Users\mahdi\.ssh\id_ed25519" />
+              <input id="keyPath" placeholder="~/.ssh/id_ed25519" />
             </label>
           </div>
 
@@ -80,46 +93,147 @@
 
           <div id="auth-passwordEnv" class="auth-panel hidden">
             <label>
-              <span>Environment variable name</span>
+              <span>Env variable</span>
               <input id="passwordEnv" value="SSH_PASSWORD" />
             </label>
           </div>
         </section>
 
-        <section class="card">
-          <div class="card__header">
-            <p class="card__step">2</p>
-            <h2>Transfer</h2>
+        <section class="panel panel--transfer">
+          <div class="panel__header">
+            <div>
+              <p class="panel__kicker">Transfer</p>
+              <h2>Workspace</h2>
+            </div>
+            <button id="testBtn" class="panel__utility">Test Connection</button>
           </div>
+
+          <div class="mode-row">
+            <div class="mode-row__label">Mode</div>
+            <div class="mode-pillbox">
+              <button type="button" class="mode-pill mode-pill--active" data-transfer-mode="download">Download</button>
+              <button type="button" class="mode-pill" data-transfer-mode="remoteCopy">Server to Server</button>
+            </div>
+            <select id="transferMode" class="hidden">
+              <option value="download">Download</option>
+              <option value="remoteCopy">Server to Server</option>
+            </select>
+          </div>
+
           <label>
-            <span>Remote file/folder path</span>
+            <span>Source path</span>
             <input id="remotePath" value="/root/meow" />
           </label>
 
-          <label>
-            <span>Local destination folder</span>
+          <label id="localPathRow">
+            <span>Local folder</span>
             <input id="localPath" value="./backup" />
           </label>
 
+          <label id="destinationPathRow" class="hidden">
+            <span>Server 2 folder</span>
+            <input id="destinationPath" value="/root/backup" />
+          </label>
+
           <label>
-            <span>Exclude patterns</span>
+            <span>Exclude</span>
             <input id="excludes" value="node_modules,.git,*.log" />
           </label>
 
-          <div class="actions actions--stack">
-            <button id="sshBtn" class="action-button action-button--primary">Connect SSH</button>
-            <button id="downloadBtn" class="action-button">Download</button>
-            <button id="testBtn" class="action-button action-button--quiet">Test Connection</button>
+          <div class="action-stack">
+            <button id="sshBtn" class="primary-action">Connect SSH</button>
+            <button id="downloadBtn" class="secondary-action">Start Download</button>
+            <button id="remoteCopyBtn" class="secondary-action hidden">Copy to Server 2</button>
           </div>
-
-          <p id="status" class="status">Ready.</p>
         </section>
 
-        <section class="card card--wide">
-          <div class="log-header">
-            <h2>SSH Console</h2>
-            <button id="sshDisconnectBtn" class="ghost">Disconnect</button>
+        <section id="destinationServerCard" class="panel panel--destination panel--inactive">
+          <div class="panel__header">
+            <div>
+              <p class="panel__kicker">Destination</p>
+              <h2>Server 2</h2>
+            </div>
+            <button id="destProfileSaveBtn" class="panel__utility">Save Profile</button>
           </div>
+
+          <div id="destinationProfiles" class="profile-strip"></div>
+
+          <div class="panel__grid">
+            <label>
+              <span>Host</span>
+              <input id="destHost" placeholder="203.0.113.20" />
+            </label>
+            <label>
+              <span>Port</span>
+              <input id="destPort" type="number" value="22" />
+            </label>
+            <label>
+              <span>Username</span>
+              <input id="destUser" placeholder="root" />
+            </label>
+            <label class="toggle">
+              <input id="destInsecure" type="checkbox" />
+              <span>Skip host key check</span>
+            </label>
+          </div>
+
+          <div class="mode-row">
+            <div class="mode-row__label">Authentication</div>
+            <div class="mode-pillbox">
+              <button type="button" class="mode-pill mode-pill--active" data-auth-scope="destination" data-auth-mode="key">Key</button>
+              <button type="button" class="mode-pill" data-auth-scope="destination" data-auth-mode="password">Password</button>
+              <button type="button" class="mode-pill" data-auth-scope="destination" data-auth-mode="passwordEnv">Env</button>
+            </div>
+            <select id="destAuthMode" class="hidden">
+              <option value="key">Private key</option>
+              <option value="password">Password</option>
+              <option value="passwordEnv">Password from env variable</option>
+            </select>
+          </div>
+
+          <div id="dest-auth-key" class="auth-panel">
+            <label>
+              <span>Private key path</span>
+              <input id="destKeyPath" placeholder="~/.ssh/id_ed25519" />
+            </label>
+          </div>
+
+          <div id="dest-auth-password" class="auth-panel hidden">
+            <label>
+              <span>Password</span>
+              <input id="destPassword" type="password" placeholder="Password" />
+            </label>
+          </div>
+
+          <div id="dest-auth-passwordEnv" class="auth-panel hidden">
+            <label>
+              <span>Env variable</span>
+              <input id="destPasswordEnv" value="SSH_PASSWORD" />
+            </label>
+          </div>
+        </section>
+
+        <aside class="panel panel--history">
+          <div class="panel__header">
+            <div>
+              <p class="panel__kicker">History</p>
+              <h2>Recent Transfers</h2>
+            </div>
+            <button id="clearHistoryBtn" class="panel__utility">Clear</button>
+          </div>
+
+          <div id="recentTransfers" class="history-list"></div>
+        </aside>
+
+        <section class="panel panel--console">
+          <div class="panel__header">
+            <div>
+              <p class="panel__kicker">SSH</p>
+              <h2>Console</h2>
+            </div>
+            <button id="sshDisconnectBtn" class="panel__utility">Disconnect</button>
+          </div>
+
           <pre id="terminalOutput" class="terminal-output"></pre>
           <form id="terminalForm" class="terminal-form">
             <input id="terminalInput" class="terminal-input" autocomplete="off" placeholder="Type a command" />
@@ -127,21 +241,16 @@
           </form>
         </section>
 
-        <section class="card card--wide">
-          <div class="log-header">
-            <h2>Activity Log</h2>
-            <button id="clearLogBtn" class="ghost">Clear Log</button>
-          </div>
-          <pre id="log"></pre>
-        </section>
-
-        <section class="card card--wide">
-          <div class="footer-actions">
+        <section class="panel panel--activity">
+          <div class="panel__header">
             <div>
-              <h2>Quit</h2>
+              <p class="panel__kicker">Activity</p>
+              <h2>Log</h2>
             </div>
-            <button id="quitBtn" class="danger">Quit App</button>
+            <button id="clearLogBtn" class="panel__utility">Clear</button>
           </div>
+
+          <pre id="log" class="activity-log"></pre>
         </section>
       </main>
     </div>
