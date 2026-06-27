@@ -23,7 +23,7 @@ type Server struct {
 	once     sync.Once
 }
 
-type requestPayload struct {
+type connectionPayload struct {
 	Host        string `json:"host"`
 	Port        int    `json:"port"`
 	User        string `json:"user"`
@@ -31,9 +31,16 @@ type requestPayload struct {
 	Password    string `json:"password"`
 	PasswordEnv string `json:"passwordEnv"`
 	Insecure    bool   `json:"insecure"`
-	RemotePath  string `json:"remotePath"`
-	LocalPath   string `json:"localPath"`
-	Excludes    string `json:"excludes"`
+}
+
+type requestPayload struct {
+	Source          connectionPayload `json:"source"`
+	Destination     connectionPayload `json:"destination"`
+	RemotePath      string            `json:"remotePath"`
+	LocalPath       string            `json:"localPath"`
+	DestinationPath string            `json:"destinationPath"`
+	Excludes        string            `json:"excludes"`
+	TransferMode    string            `json:"transferMode"`
 }
 
 type apiResponse struct {
@@ -71,6 +78,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/api/ssh/input", s.handleSSHInput)
 	mux.HandleFunc("/api/ssh/disconnect", s.handleSSHDisconnect)
 	mux.HandleFunc("/api/download", s.handleDownload)
+	mux.HandleFunc("/api/remote-copy", s.handleRemoteCopy)
 	mux.HandleFunc("/api/quit", s.handleQuit)
 
 	return mux
@@ -130,21 +138,40 @@ func (s *Server) handleTestConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := payload.connectionConfig()
+	config, err := payload.sourceConfig()
 	if err != nil {
 		s.writeOperationError(w, err)
 		return
 	}
 
-	s.Log("Testing connection to " + config.Address())
+	s.Log("Testing source connection to " + config.Address())
 	if err := transfer.TestConnection(config); err != nil {
-		s.Log("Connection failed: " + err.Error())
+		s.Log("Source connection failed: " + err.Error())
 		s.writeOperationError(w, err)
 		return
 	}
 
-	s.Log("Connection succeeded.")
-	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Connection succeeded."})
+	if !payload.isRemoteCopyMode() {
+		s.Log("Source connection succeeded.")
+		writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Connection succeeded."})
+		return
+	}
+
+	destinationConfig, err := payload.destinationConfig()
+	if err != nil {
+		s.writeOperationError(w, err)
+		return
+	}
+
+	s.Log("Testing destination connection to " + destinationConfig.Address())
+	if err := transfer.TestConnection(destinationConfig); err != nil {
+		s.Log("Destination connection failed: " + err.Error())
+		s.writeOperationError(w, err)
+		return
+	}
+
+	s.Log("Source and destination connections succeeded.")
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Both server connections succeeded."})
 }
 
 func (s *Server) handleSSHConnect(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +180,7 @@ func (s *Server) handleSSHConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := payload.connectionConfig()
+	config, err := payload.sourceConfig()
 	if err != nil {
 		s.writeOperationError(w, err)
 		return
@@ -241,6 +268,32 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Download finished."})
 }
 
+func (s *Server) handleRemoteCopy(w http.ResponseWriter, r *http.Request) {
+	payload, ok := s.decodePayload(w, r)
+	if !ok {
+		return
+	}
+
+	request, err := payload.remoteCopyRequest()
+	if err != nil {
+		s.writeOperationError(w, err)
+		return
+	}
+
+	s.Log("Starting server-to-server copy from " + request.SourcePath + " to " + request.DestinationPath)
+	err = transfer.CopyRemoteToRemote(request, func(line string) {
+		s.Log(line)
+	})
+	if err != nil {
+		s.Log("Server-to-server copy failed: " + err.Error())
+		s.writeOperationError(w, err)
+		return
+	}
+
+	s.Log("Server-to-server copy finished.")
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Server-to-server copy finished."})
+}
+
 func (s *Server) handleQuit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -276,7 +329,7 @@ func (s *Server) writeOperationError(w http.ResponseWriter, err error) {
 	})
 }
 
-func (p requestPayload) connectionConfig() (transfer.ConnectionConfig, error) {
+func (p connectionPayload) connectionConfig(label string) (transfer.ConnectionConfig, error) {
 	config := transfer.ConnectionConfig{
 		Host:        strings.TrimSpace(p.Host),
 		Port:        p.Port,
@@ -288,14 +341,22 @@ func (p requestPayload) connectionConfig() (transfer.ConnectionConfig, error) {
 	}
 
 	if err := config.Validate(); err != nil {
-		return transfer.ConnectionConfig{}, err
+		return transfer.ConnectionConfig{}, fmt.Errorf("%s: %w", label, err)
 	}
 
 	return config, nil
 }
 
+func (p requestPayload) sourceConfig() (transfer.ConnectionConfig, error) {
+	return p.Source.connectionConfig("source server")
+}
+
+func (p requestPayload) destinationConfig() (transfer.ConnectionConfig, error) {
+	return p.Destination.connectionConfig("destination server")
+}
+
 func (p requestPayload) downloadRequest() (transfer.DownloadRequest, error) {
-	config, err := p.connectionConfig()
+	config, err := p.sourceConfig()
 	if err != nil {
 		return transfer.DownloadRequest{}, err
 	}
@@ -316,6 +377,40 @@ func (p requestPayload) downloadRequest() (transfer.DownloadRequest, error) {
 	}
 
 	return request, nil
+}
+
+func (p requestPayload) remoteCopyRequest() (transfer.RemoteCopyRequest, error) {
+	sourceConfig, err := p.sourceConfig()
+	if err != nil {
+		return transfer.RemoteCopyRequest{}, err
+	}
+
+	destinationConfig, err := p.destinationConfig()
+	if err != nil {
+		return transfer.RemoteCopyRequest{}, err
+	}
+
+	request := transfer.RemoteCopyRequest{
+		Source:          sourceConfig,
+		Destination:     destinationConfig,
+		SourcePath:      strings.TrimSpace(p.RemotePath),
+		DestinationPath: strings.TrimSpace(p.DestinationPath),
+		Excludes:        splitCommaList(p.Excludes),
+	}
+
+	if request.SourcePath == "" {
+		return transfer.RemoteCopyRequest{}, fmt.Errorf("source path is required")
+	}
+
+	if request.DestinationPath == "" {
+		return transfer.RemoteCopyRequest{}, fmt.Errorf("destination path is required")
+	}
+
+	return request, nil
+}
+
+func (p requestPayload) isRemoteCopyMode() bool {
+	return strings.EqualFold(strings.TrimSpace(p.TransferMode), "remoteCopy")
 }
 
 func splitCommaList(value string) []string {
